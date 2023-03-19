@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/jgthms/minireset.css@master/minireset.min.css">
+    <link rel="stylesheet" href="style.css" />
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Laboratorio 6</title>
+</head>
+<body>
+    <div id="root"></div>
+    <script type="text/babel">
+        
+        const Card = ({src, flipped, flip, index, onCardClick, animacion}) => {         
+            const cardHtml = `card ${animacion ? 'flip' : ''}`
+
+            return (
+                <div className={cardHtml} onClick={() => {
+                    flip(index)
+                    }}
+                    style={{
+                        display: 'flex',
+                        width: '100%',
+                        height: '100%',
+                        justifyContent: 'center',
+                        alignItems: 'center',
+                        backgroundColor: 'transparent',
+                    }}>
+
+                    <img src={flipped ? src : './back.png'} style={
+                        {
+                            width: '100%',
+                            height: '100%',                            
+                            borderRadius: '25px',
+                            padding: '10px',
+                            cursor: 'pointer'
+                        }
+                    }/>
+                </div>
+            
+            );
+        }
+
+            
+        const Cards = () => {
+            const [cards, setCards] = React.useState([])
+            const [flippedCards, setFlippedCards] = React.useState([])
+            const [moves, setMoves] = React.useState(0)
+            const [points, setPoints] = React.useState(0)
+
+            const [animacionClick, setAnimacion] = React.useState(false)
+
+            const [gameComplete, setGameComplete] = React.useState(false);
+            
+
+            React.useEffect(() => {
+                if (flippedCards.length === 2){
+                    compareObjects()
+                }
+            }, [flippedCards])
+            
+            const isGameComplete = () => {
+                console.log('puntos', points >= 0)
+                if((points * 150) === 1050) {
+                    setGameComplete(true)
+                }
+            };
+
+            const flipCard = (index) => {
+                if(cards[index].flipped || flippedCards.length >= 2) {
+                    return
+                }
+
+                setCards( oldCards => {
+                    const newCards = [...oldCards]
+                    // const flippedCards = newCards.reduce((count, card) => (count + (card.flipped ? 1 : 0)), 0) 
+
+                    newCards[index].flipped = true
+                    newCards[index].animacion = true
+                    
+                    
+                    if (flippedCards.length === 0) {         
+                        setFlippedCards([newCards[index]])
+                    } else {
+                        setFlippedCards((saveCards) => [...saveCards, newCards[index]])
+                        
+                    }
+                    return newCards
+                })
+            }
+
+
+            const flipAllCards = () => {
+                setCards(oldCards => {
+                    const newCards = oldCards.map(card => {
+                    if (card.src === true) {
+                        return { ...card, src: false };
+                    } else {
+                        return card;
+                    }
+                    });
+                    return newCards;
+                });
+            };
+
+            const flipActiveCards = (first, second) => {
+                setCards(oldCards => {
+                    const newCards = [...oldCards]
+                    
+                    const firstIndex = newCards.findIndex((card) => card.id === first.id)
+                    const secondIndex = newCards.findIndex((card) => card.id === second.id)
+
+                    newCards[firstIndex].flipped = false
+                    newCards[secondIndex].flipped = false
+
+                    newCards[firstIndex].animacion = false
+                    newCards[secondIndex].animacion = false
+
+
+                    return newCards
+                });
+
+            };
+
+            const compareObjects = () => {
+                const [first, second] = flippedCards
+
+                if (first.src === second.src) {
+                    console.log('iguales')
+                    setFlippedCards([])
+                    setPoints((oldPoints) => oldPoints + 1)
+                } else {
+                    console.log('diferentes')
+                    setTimeout(() => {
+                        flipActiveCards(first, second)
+                        setFlippedCards([])
+                    }, 3000)
+                }
+                
+                setMoves((oldMoves) => oldMoves + 1)
+                isGameComplete()
+                console.log('moviemiento', moves, gameComplete, points)
+            };            
+
+
+            const callCards = async () => {
+                const response = await fetch('./data.json')
+                const data = await response.json()
+                const shuffledCards = [...data].sort(() => Math.random() - 0.5);
+                setCards(shuffledCards)
+                setMoves(0)
+                setPoints(0)
+                return data
+            }
+
+            React.useEffect(() => {
+                callCards()
+            }, [])
+
+
+            if (cards.length === 0) {
+                return <div>Loading...</div>
+            } 
+
+            const Text = ({ moves, label }) => (
+                <div style={{ 
+                    color: '#c0c0c0',
+                    fontFamily: 'monospace',
+                    fontSize: '24px',
+                    fontWeight: 'bold',
+                    padding: '10px 0px 0px 25px'
+                }}>
+                    {label}: {moves}
+                </div>
+            )
+
+            const Reset = () => {
+                return (
+                    <button onClick={() => {callCards(); setGameComplete(false)}} style={{
+                        height: '50px',
+                        width: '150px',
+                        fontSize: '24px',
+                        borderRadius: '15px',
+                        padding: '5px 20px 5px 25px',
+                        margin: '15px'
+                    }}
+                    >Reset</button>
+                )
+            }
+
+            const GameCompleteAlert = () => {
+                return (
+                    <div role="alert">
+                        <h1 style={{color: 'white', fontFamily: 'monospace'}}>Game Complete</h1>
+                        <p style={{color: 'white', fontFamily: 'monospace'}}>Has completado el juego en {moves} movimientos</p>
+                        <Reset />
+                    </div>
+                )
+            }
+
+            return (
+                <div className="Game-container">
+                    <div className="secondContainer" style={{display: `${gameComplete ? 'none' : ''}`}}>
+                        <div className="info">
+                            <Text moves={moves} label="Movimientos"/>
+                            <Text moves={points * 150} label="Puntos"/>
+                            <Reset />
+                        </div>
+                        <div className="fondo">
+                            <div className="board">
+                                {cards.map(({flipped, src, id, animacion}, i) => <Card key={id} flipped={flipped} src={src} index={i} flip={flipCard} animacion={animacion}/> )}
+                            </div>
+                        </div>
+                    </div>
+                    {gameComplete && <GameCompleteAlert />}
+                </div>
+            );
+        }
+
+       
+
+        const Game = () => {
+            return (
+                <div className="Game">
+                    <Cards/>
+                </div>
+            )
+        }
+
+        const App = () => {
+            return (
+                <div>
+                    <h1> Laboratorio 6 </h1>
+                </div>
+            )
+        }
+        const root = ReactDOM.createRoot(document.getElementById('root'))
+        root.render(<Game />)
+    </script>
+</body>
+</html> 
